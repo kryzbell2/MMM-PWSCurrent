@@ -211,9 +211,9 @@ Module.register("MMM-PWSCurrent", {
     if (this.config.units === "m") {
       return {
         temperature: "&deg;C",
-        windSpeed: "km/h",
-        pressure: "hPa",
-        rain: "mm"
+        windSpeed: "mph",
+        pressure: "in",
+        rain: "in"
       };
     }
 

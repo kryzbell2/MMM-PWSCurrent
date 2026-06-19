@@ -126,19 +126,21 @@ module.exports = NodeHelper.create({
   },
 
   normalizeObservation: function (observation) {
-    var values = observation.imperial || observation.metric || {};
+    var imperial = observation.imperial || {};
+    var metric = observation.metric || {};
+    var temperatureValues = this.config && this.config.units === "m" ? metric : imperial;
 
     return {
       stationId: observation.stationID || observation.stationId || null,
       neighborhood: observation.neighborhood || null,
       obsTimeLocal: observation.obsTimeLocal || null,
       humidity: this.numberOrNull(observation.humidity),
-      temperature: this.numberOrNull(values.temp),
-      dewPoint: this.numberOrNull(values.dewpt),
-      windSpeed: this.numberOrNull(values.windSpeed),
-      windGust: this.numberOrNull(values.windGust),
-      pressure: this.numberOrNull(values.pressure),
-      rainTotal: this.numberOrNull(values.precipTotal)
+      temperature: this.numberOrNull(temperatureValues.temp),
+      dewPoint: this.numberOrNull(temperatureValues.dewpt),
+      windSpeed: this.numberOrNull(imperial.windSpeed),
+      windGust: this.numberOrNull(imperial.windGust),
+      pressure: this.numberOrNull(imperial.pressure),
+      rainTotal: this.numberOrNull(imperial.precipTotal)
     };
   },
 
