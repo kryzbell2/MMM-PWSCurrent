@@ -1,0 +1,63 @@
+.mmm-pws-current {
+  min-width: 210px;
+  color: #fff;
+  line-height: 1.25;
+  text-align: right;
+}
+
+.mmm-pws-current .pws-title {
+  margin-bottom: 2px;
+  text-transform: uppercase;
+}
+
+.mmm-pws-current .pws-current-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.mmm-pws-current .pws-temp {
+  font-size: 42px;
+  font-weight: 300;
+  line-height: 1;
+}
+
+.mmm-pws-current .pws-humidity {
+  white-space: nowrap;
+}
+
+.mmm-pws-current .pws-details {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mmm-pws-current .pws-details td {
+  padding: 1px 0;
+}
+
+.mmm-pws-current .pws-label {
+  padding-right: 14px;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.mmm-pws-current .pws-value {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.mmm-pws-current .pws-observed {
+  margin-top: 5px;
+}
+
+.mmm-pws-current .pws-status {
+  margin-top: 4px;
+}
+
+.mmm-pws-current .pws-diagnostic {
+  max-width: 260px;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+}
