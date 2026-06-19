@@ -7,13 +7,29 @@ Module.register("MMM-PWSCurrent", {
     apiKey: "",
     units: "e",
     updateInterval: 5 * 60 * 1000,
-    showDetails: true
+    showDetails: true,
+    quietHours: {
+      enabled: true,
+      start: "23:59",
+      end: "05:00"
+    },
+    lines: {
+      temperature: { label: "Temperature", show: true },
+      humidity: { label: "Humidity", show: true },
+      dewPoint: { label: "Dew point", show: true },
+      windSpeed: { label: "Wind", show: true },
+      windGust: { label: "Gust", show: true },
+      pressure: { label: "Pressure", show: true },
+      rainTotal: { label: "Rain", show: true },
+      obsTimeLocal: { label: "Observed", show: true }
+    }
   },
 
   start: function () {
     this.loaded = false;
     this.weather = null;
     this.error = null;
+    this.paused = false;
     this.timer = null;
 
     this.sendSocketNotification("PWS_CONFIG", this.config);
@@ -42,12 +58,21 @@ Module.register("MMM-PWSCurrent", {
       this.loaded = true;
       this.weather = payload;
       this.error = null;
+      this.paused = false;
       this.updateDom(400);
     }
 
     if (notification === "PWS_ERROR") {
       this.loaded = true;
       this.error = payload || { message: "Unknown error" };
+      this.paused = false;
+      this.updateDom(400);
+    }
+
+    if (notification === "PWS_PAUSED") {
+      this.loaded = true;
+      this.error = payload || { message: "Weather updates paused" };
+      this.paused = true;
       this.updateDom(400);
     }
   },
@@ -67,7 +92,11 @@ Module.register("MMM-PWSCurrent", {
     }
 
     if (this.error) {
-      wrapper.appendChild(this.makeStatus("Weather unavailable", this.error.message || this.error.code));
+      if (this.paused) {
+        wrapper.appendChild(this.makeStatus(this.error.message || "Weather updates paused", this.error.diagnostic));
+      } else {
+        wrapper.appendChild(this.makeStatus("Weather unavailable", this.error.diagnostic || this.error.message || this.error.code));
+      }
       return wrapper;
     }
 
@@ -76,29 +105,35 @@ Module.register("MMM-PWSCurrent", {
       return wrapper;
     }
 
-    var current = document.createElement("div");
-    current.className = "pws-current-row";
+    if (this.isRowVisible("temperature") || this.isRowVisible("humidity")) {
+      var current = document.createElement("div");
+      current.className = "pws-current-row";
 
-    var temp = document.createElement("span");
-    temp.className = "pws-temp bright";
-    temp.innerHTML = this.formatValue(this.weather.temperature, "&deg;F");
-    current.appendChild(temp);
+      if (this.isRowVisible("temperature")) {
+        var temp = document.createElement("span");
+        temp.className = "pws-temp bright";
+        temp.innerHTML = this.formatValue(this.weather.temperature, this.getUnitLabels().temperature);
+        current.appendChild(temp);
+      }
 
-    var humidity = document.createElement("span");
-    humidity.className = "pws-humidity small dimmed";
-    humidity.innerHTML = this.formatValue(this.weather.humidity, "% humidity");
-    current.appendChild(humidity);
+      if (this.isRowVisible("humidity")) {
+        var humidity = document.createElement("span");
+        humidity.className = "pws-humidity small dimmed";
+        humidity.innerHTML = this.formatValue(this.weather.humidity, "% " + this.getRowLabel("humidity").toLowerCase());
+        current.appendChild(humidity);
+      }
 
-    wrapper.appendChild(current);
+      wrapper.appendChild(current);
+    }
 
     if (this.config.showDetails) {
       wrapper.appendChild(this.makeDetailsTable());
     }
 
-    if (this.weather.obsTimeLocal) {
+    if (this.weather.obsTimeLocal && this.isRowVisible("obsTimeLocal")) {
       var observed = document.createElement("div");
       observed.className = "pws-observed xsmall dimmed";
-      observed.innerHTML = "Observed " + this.escapeHtml(this.weather.obsTimeLocal);
+      observed.innerHTML = this.escapeHtml(this.getRowLabel("obsTimeLocal")) + " " + this.escapeHtml(this.weather.obsTimeLocal);
       wrapper.appendChild(observed);
     }
 
@@ -108,23 +143,28 @@ Module.register("MMM-PWSCurrent", {
   makeDetailsTable: function () {
     var table = document.createElement("table");
     table.className = "pws-details small";
+    var units = this.getUnitLabels();
 
     var rows = [
-      ["Dew point", this.formatValue(this.weather.dewPoint, "&deg;F")],
-      ["Wind", this.formatValue(this.weather.windSpeed, "mph")],
-      ["Gust", this.formatValue(this.weather.windGust, "mph")],
-      ["Pressure", this.formatValue(this.weather.pressure, "in")],
-      ["Rain", this.formatValue(this.weather.rainTotal, "in")]
+      ["dewPoint", this.formatValue(this.weather.dewPoint, units.temperature)],
+      ["windSpeed", this.formatValue(this.weather.windSpeed, units.windSpeed)],
+      ["windGust", this.formatValue(this.weather.windGust, units.windSpeed)],
+      ["pressure", this.formatValue(this.weather.pressure, units.pressure)],
+      ["rainTotal", this.formatValue(this.weather.rainTotal, units.rain)]
     ];
 
     for (var i = 0; i < rows.length; i += 1) {
+      if (!this.isRowVisible(rows[i][0])) {
+        continue;
+      }
+
       var tr = document.createElement("tr");
       var label = document.createElement("td");
       var value = document.createElement("td");
 
       label.className = "pws-label dimmed";
       value.className = "pws-value bright";
-      label.innerHTML = rows[i][0];
+      label.innerHTML = this.escapeHtml(this.getRowLabel(rows[i][0]));
       value.innerHTML = rows[i][1];
 
       tr.appendChild(label);
@@ -133,6 +173,56 @@ Module.register("MMM-PWSCurrent", {
     }
 
     return table;
+  },
+
+  getRowLabel: function (key) {
+    if (this.config.lines && this.config.lines[key] && this.config.lines[key].label !== undefined) {
+      return this.config.lines[key].label;
+    }
+
+    if (this.config.labels && this.config.labels[key] !== undefined) {
+      return this.config.labels[key];
+    }
+
+    if (this.defaults.lines[key] && this.defaults.lines[key].label !== undefined) {
+      return this.defaults.lines[key].label;
+    }
+
+    return key;
+  },
+
+  isRowVisible: function (key) {
+    if (this.config.lines && this.config.lines[key] && this.config.lines[key].show !== undefined) {
+      return Boolean(this.config.lines[key].show);
+    }
+
+    if (this.config.showRows && this.config.showRows[key] !== undefined) {
+      return Boolean(this.config.showRows[key]);
+    }
+
+    if (this.defaults.lines[key] && this.defaults.lines[key].show !== undefined) {
+      return Boolean(this.defaults.lines[key].show);
+    }
+
+    return true;
+  },
+
+  getUnitLabels: function () {
+    if (this.config.units === "m") {
+      return {
+        temperature: "&deg;C",
+        windSpeed: "km/h",
+        pressure: "hPa",
+        rain: "mm"
+      };
+    }
+
+    return {
+      temperature: "&deg;F",
+      windSpeed: "mph",
+      pressure: "in",
+      rain: "in"
+    };
   },
 
   makeStatus: function (message, diagnostic) {

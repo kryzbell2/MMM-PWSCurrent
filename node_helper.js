@@ -6,6 +6,7 @@ module.exports = NodeHelper.create({
   start: function () {
     this.config = null;
     this.isFetching = false;
+    this.lastObservation = null;
   },
 
   socketNotificationReceived: function (notification, payload) {
@@ -41,12 +42,29 @@ module.exports = NodeHelper.create({
       return;
     }
 
+    if (this.isQuietHours(this.config)) {
+      if (this.lastObservation) {
+        this.sendSocketNotification("PWS_DATA", Object.assign({}, this.lastObservation, {
+          paused: true,
+          stale: true
+        }));
+        return;
+      }
+
+      this.sendSocketNotification("PWS_PAUSED", {
+        message: "Weather updates paused",
+        diagnostic: "Next fetch after " + this.getQuietEnd(this.config)
+      });
+      return;
+    }
+
     this.isFetching = true;
 
     this.getJson(this.buildUrl(this.config))
       .then(function (data) {
         var observation = self.getObservation(data);
-        self.sendSocketNotification("PWS_DATA", self.normalizeObservation(observation));
+        self.lastObservation = self.normalizeObservation(observation);
+        self.sendSocketNotification("PWS_DATA", self.lastObservation);
       })
       .catch(function (error) {
         Log.error("MMM-PWSCurrent: " + error.message);
@@ -122,6 +140,47 @@ module.exports = NodeHelper.create({
       pressure: this.numberOrNull(values.pressure),
       rainTotal: this.numberOrNull(values.precipTotal)
     };
+  },
+
+  isQuietHours: function (config) {
+    var quietHours = config.quietHours || {};
+
+    if (quietHours.enabled === false) {
+      return false;
+    }
+
+    var start = this.timeToMinutes(quietHours.start || "23:59");
+    var end = this.timeToMinutes(quietHours.end || "05:00");
+    var now = new Date();
+    var current = now.getHours() * 60 + now.getMinutes();
+
+    if (start === end) {
+      return false;
+    }
+
+    if (start < end) {
+      return current >= start && current < end;
+    }
+
+    return current >= start || current < end;
+  },
+
+  timeToMinutes: function (time) {
+    var match = String(time).match(/^(\d{1,2}):(\d{2})$/);
+
+    if (!match) {
+      return 0;
+    }
+
+    var hours = Math.min(Math.max(Number(match[1]), 0), 23);
+    var minutes = Math.min(Math.max(Number(match[2]), 0), 59);
+
+    return hours * 60 + minutes;
+  },
+
+  getQuietEnd: function (config) {
+    var quietHours = config.quietHours || {};
+    return quietHours.end || "05:00";
   },
 
   numberOrNull: function (value) {

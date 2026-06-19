@@ -30,7 +30,22 @@ Add this block to the `modules` array in `~/MagicMirror/config/config.js`:
     apiKey: "PUT_API_KEY_HERE",
     units: "e",
     updateInterval: 5 * 60 * 1000,
-    showDetails: true
+    showDetails: true,
+    quietHours: {
+      enabled: true,
+      start: "23:59",
+      end: "05:00"
+    },
+    lines: {
+      temperature: { label: "Temperature", show: true },
+      humidity: { label: "Humidity", show: true },
+      dewPoint: { label: "Dew point", show: true },
+      windSpeed: { label: "Wind", show: true },
+      windGust: { label: "Gust", show: true },
+      pressure: { label: "Pressure", show: true },
+      rainTotal: { label: "Rain", show: true },
+      obsTimeLocal: { label: "Observed", show: true }
+    }
   }
 },
 ```
@@ -47,6 +62,13 @@ The Weather Underground station upload key is not the same thing as the Weather.
 | `units` | `"e"` | Weather.com units parameter. `"e"` returns imperial values. |
 | `updateInterval` | `5 * 60 * 1000` | Refresh interval in milliseconds. |
 | `showDetails` | `true` | Shows humidity, dew point, wind, gust, pressure, rain total, and observation time. |
+| `quietHours.enabled` | `true` | Stops API pulls during the configured quiet-hours window. |
+| `quietHours.start` | `"23:59"` | Local time when API pulls pause. |
+| `quietHours.end` | `"05:00"` | Local time when API pulls resume. |
+| `lines.<key>.label` | See example | Custom display text for each data point. |
+| `lines.<key>.show` | `true` | Show or suppress individual data points. |
+
+Use `units: "m"` to request metric values. Metric display labels use Celsius, km/h, hPa, and mm.
 
 ## Checks
 
