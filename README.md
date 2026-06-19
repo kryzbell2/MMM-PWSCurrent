@@ -68,7 +68,7 @@ The Weather Underground station upload key is not the same thing as the Weather.
 | `lines.<key>.label` | See example | Custom display text for each data point. |
 | `lines.<key>.show` | `true` | Show or suppress individual data points. |
 
-Use `units: "m"` to show temperature and dew point in Celsius. Wind, pressure, and rain remain displayed in imperial units.
+Use `units: "m"` to show temperature and dew point in Celsius. Wind, pressure, and rain remain displayed in imperial units; if Weather.com returns only metric values, the helper converts those fields back to imperial for display.
 
 ## Checks
 

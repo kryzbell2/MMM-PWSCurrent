@@ -135,13 +135,66 @@ module.exports = NodeHelper.create({
       neighborhood: observation.neighborhood || null,
       obsTimeLocal: observation.obsTimeLocal || null,
       humidity: this.numberOrNull(observation.humidity),
-      temperature: this.numberOrNull(temperatureValues.temp),
-      dewPoint: this.numberOrNull(temperatureValues.dewpt),
-      windSpeed: this.numberOrNull(imperial.windSpeed),
-      windGust: this.numberOrNull(imperial.windGust),
-      pressure: this.numberOrNull(imperial.pressure),
-      rainTotal: this.numberOrNull(imperial.precipTotal)
+      temperature: this.normalizeTemperature(temperatureValues.temp, imperial.temp),
+      dewPoint: this.normalizeTemperature(temperatureValues.dewpt, imperial.dewpt),
+      windSpeed: this.normalizeMph(imperial.windSpeed, metric.windSpeed),
+      windGust: this.normalizeMph(imperial.windGust, metric.windGust),
+      pressure: this.normalizeInHg(imperial.pressure, metric.pressure),
+      rainTotal: this.normalizeInches(imperial.precipTotal, metric.precipTotal)
     };
+  },
+
+  normalizeTemperature: function (preferredValue, fallbackImperialValue) {
+    var preferred = this.numberOrNull(preferredValue);
+
+    if (preferred !== null) {
+      return preferred;
+    }
+
+    var fahrenheit = this.numberOrNull(fallbackImperialValue);
+
+    if (fahrenheit === null) {
+      return null;
+    }
+
+    if (this.config && this.config.units === "m") {
+      return (fahrenheit - 32) * 5 / 9;
+    }
+
+    return fahrenheit;
+  },
+
+  normalizeMph: function (imperialValue, metricValue) {
+    var mph = this.numberOrNull(imperialValue);
+
+    if (mph !== null) {
+      return mph;
+    }
+
+    var kilometersPerHour = this.numberOrNull(metricValue);
+    return kilometersPerHour === null ? null : kilometersPerHour * 0.621371;
+  },
+
+  normalizeInHg: function (imperialValue, metricValue) {
+    var inches = this.numberOrNull(imperialValue);
+
+    if (inches !== null) {
+      return inches;
+    }
+
+    var hectopascals = this.numberOrNull(metricValue);
+    return hectopascals === null ? null : hectopascals * 0.029529983071445;
+  },
+
+  normalizeInches: function (imperialValue, metricValue) {
+    var inches = this.numberOrNull(imperialValue);
+
+    if (inches !== null) {
+      return inches;
+    }
+
+    var millimeters = this.numberOrNull(metricValue);
+    return millimeters === null ? null : millimeters * 0.039370078740157;
   },
 
   isQuietHours: function (config) {
